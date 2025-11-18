@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, FC, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { initializeApp } from "firebase/app";
@@ -376,14 +377,14 @@ const AdminPanel: FC<{
                     {localDrivers.sort((a,b) => a.id - b.id).map(d => (
                         <div key={d.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
                             <span style={{flex: 1}}>{d.name}</span>
-                            <input type="number" value={d.price} onChange={e => handlePriceChange(d.id, 'driver', e.target.value)} style={{width: '100px'}} />
+                            <input type="number" value={d.price} onChange={e => handlePriceChange(d.id, 'driver', e.target.value)} style={{width: '100px'}} step="0.1"/>
                         </div>
                     ))}
                     <h4 style={{marginTop: '1rem'}}>Construtores</h4>
                     {localConstructors.sort((a,b) => a.id - b.id).map(c => (
                         <div key={c.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
                             <span style={{flex: 1}}>{c.name}</span>
-                            <input type="number" value={c.price} onChange={e => handlePriceChange(c.id, 'constructor', e.target.value)} style={{width: '100px'}} />
+                            <input type="number" value={c.price} onChange={e => handlePriceChange(c.id, 'constructor', e.target.value)} style={{width: '100px'}} step="0.1" />
                         </div>
                     ))}
                     <button onClick={() => onUpdatePrices(localDrivers, localConstructors)} style={{marginTop: '1rem'}}>Salvar Preços</button>
