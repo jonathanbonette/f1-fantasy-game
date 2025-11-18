@@ -206,6 +206,79 @@ const CountdownTimer: FC<{ deadline: string | null }> = ({ deadline }) => {
     );
 };
 
+const MyTeamDisplay: FC<{
+    team: Team | undefined;
+    drivers: Driver[];
+    constructors: Constructor[];
+}> = ({ team, drivers, constructors }) => {
+    if (!team || (team.drivers.length === 0 && team.constructors.length === 0)) {
+        return (
+            <div className="container" style={{textAlign: 'center'}}>
+                <h2>Você ainda não montou sua equipe.</h2>
+                <p>Vá até a aba "Montar Equipe" para selecionar seus pilotos e construtores.</p>
+            </div>
+        );
+    }
+
+    const myDrivers = drivers.filter(d => team.drivers.includes(d.id));
+    const myConstructors = constructors.filter(c => team.constructors.includes(c.id));
+
+    const totalValue = [...myDrivers, ...myConstructors].reduce((acc, curr) => acc + curr.price, 0);
+
+    return (
+        <div className="container">
+             <div className="container-header">
+                <h2>Minha Seleção Atual</h2>
+                <div className="budget-info" style={{fontSize: '1.1rem'}}>
+                    Valor da Equipe: <span className="cost">${totalValue.toFixed(1)}M</span>
+                </div>
+             </div>
+
+             <h3 style={{marginTop: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem'}}>Pilotos</h3>
+             <div className="my-team-grid">
+                 {myDrivers.map(driver => (
+                     <div key={driver.id} className="my-team-card">
+                         <div className="card-top-strip driver"></div>
+                         <div className="card-content">
+                             <div className="card-name">{driver.name}</div>
+                             <div className="card-price">${driver.price.toFixed(1)}M</div>
+                         </div>
+                     </div>
+                 ))}
+                 {Array.from({ length: 5 - myDrivers.length }).map((_, i) => (
+                      <div key={`empty-d-${i}`} className="my-team-card empty">
+                          <div className="card-content">
+                              <span style={{fontSize: '2rem', color: '#ccc'}}>+</span>
+                              <div className="card-name" style={{color: '#ccc'}}>Vazio</div>
+                          </div>
+                      </div>
+                 ))}
+             </div>
+
+             <h3 style={{marginTop: '2rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem'}}>Construtores</h3>
+             <div className="my-team-grid">
+                 {myConstructors.map(constructor => (
+                     <div key={constructor.id} className="my-team-card">
+                         <div className="card-top-strip constructor"></div>
+                         <div className="card-content">
+                             <div className="card-name">{constructor.name}</div>
+                             <div className="card-price">${constructor.price.toFixed(1)}M</div>
+                         </div>
+                     </div>
+                 ))}
+                 {Array.from({ length: 2 - myConstructors.length }).map((_, i) => (
+                      <div key={`empty-c-${i}`} className="my-team-card empty">
+                           <div className="card-content">
+                              <span style={{fontSize: '2rem', color: '#ccc'}}>+</span>
+                              <div className="card-name" style={{color: '#ccc'}}>Vazio</div>
+                          </div>
+                      </div>
+                 ))}
+             </div>
+        </div>
+    );
+};
+
 
 const TeamSelection: FC<{
     drivers: Driver[];
@@ -700,7 +773,7 @@ const TeamNameSetup: FC<{ onSave: (teamName: string) => void; users: User[] }> =
 
 // --- Main App Component ---
 const App: FC = () => {
-    const [view, setView] = useState<'team' | 'results' | 'standings'>('team');
+    const [view, setView] = useState<'team' | 'my-team' | 'results' | 'standings'>('team');
     const [firebaseError, setFirebaseError] = useState<boolean>(false);
     
     // State is now fetched from Firestore, not local storage
@@ -740,10 +813,6 @@ const App: FC = () => {
                         const docRef = doc(db, 'constructors', constructor.id.toString());
                         batch.set(docRef, constructor);
                     });
-                    
-                    // IMPORTANT: Admin account is no longer created here for security reasons.
-                    // Please create the 'admin' account manually in the Firebase Console > Firestore Database > 'accounts' collection.
-                    // Document ID: 'admin', fields: username: 'admin', password: 'your-secure-password', teamName: 'Administrator'
 
                     const configRef = doc(db, 'config', 'main');
                     batch.set(configRef, { deadline: null });
@@ -1053,11 +1122,13 @@ const App: FC = () => {
             </header>
             <nav className="tabs">
                 <button className={`tab-button ${view === 'team' ? 'active' : ''}`} onClick={() => setView('team')}>Montar Equipe</button>
+                <button className={`tab-button ${view === 'my-team' ? 'active' : ''}`} onClick={() => setView('my-team')}>Minha Equipe</button>
                 <button className={`tab-button ${view === 'results' ? 'active' : ''}`} onClick={() => setView('results')}>Resultados da Etapa</button>
                 <button className={`tab-button ${view === 'standings' ? 'active' : ''}`} onClick={() => setView('standings')}>Classificação Geral</button>
             </nav>
 
             {view === 'team' && <TeamSelection drivers={drivers} constructors={constructors} teamName={currentUser.teamName} currentUserTeam={currentUserTeam} onSaveTeam={handleSaveTeam} deadline={deadline} />}
+            {view === 'my-team' && <MyTeamDisplay team={currentUserTeam?.team} drivers={drivers} constructors={constructors} />}
             {view === 'results' && <RaceResults raceHistory={raceHistory} />}
             {view === 'standings' && <Standings users={users} />}
         </>
