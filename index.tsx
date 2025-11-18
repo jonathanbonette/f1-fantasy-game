@@ -339,33 +339,62 @@ const AdminPanel: FC<{
     deadline: string | null;
     onSetDeadline: (deadline: string) => void;
 }> = ({ drivers, constructors, onUpdatePrices, onFinalizeRound, deadline, onSetDeadline, users }) => {
-    const [localDrivers, setLocalDrivers] = useState([...drivers]);
-    const [localConstructors, setLocalConstructors] = useState([...constructors]);
+    // Local state uses flexible types for prices to handle text inputs correctly during editing
+    // This prevents decimal points from disappearing while typing
+    const [localDrivers, setLocalDrivers] = useState<(Omit<Driver, 'price'> & { price: number | string })[]>([...drivers]);
+    const [localConstructors, setLocalConstructors] = useState<(Omit<Constructor, 'price'> & { price: number | string })[]>([...constructors]);
     const [gpName, setGpName] = useState('');
     const [newDeadline, setNewDeadline] = useState(deadline ? deadline.slice(0, 16) : '');
 
-     useEffect(() => {
-        setLocalDrivers([...drivers]);
-        setLocalConstructors([...constructors]);
+    useEffect(() => {
+        setLocalDrivers(drivers.map(d => ({ ...d })));
+        setLocalConstructors(constructors.map(c => ({ ...c })));
     }, [drivers, constructors]);
 
     const handlePriceChange = (id: number, type: 'driver' | 'constructor', value: string) => {
-        const price = parseFloat(value);
+        // Store value as string temporarily to allow typing decimals like "29."
         if (type === 'driver') {
-            setLocalDrivers(localDrivers.map(d => d.id === id ? { ...d, price } : d));
+            setLocalDrivers(prev => prev.map(d => d.id === id ? { ...d, price: value } : d));
         } else {
-            setLocalConstructors(localConstructors.map(c => c.id === id ? { ...c, price } : c));
+            setLocalConstructors(prev => prev.map(c => c.id === id ? { ...c, price: value } : c));
         }
     };
     
     const handlePointsChange = (id: number, type: 'driver' | 'constructor', value: string) => {
-        const points = parseInt(value, 10);
+        const points = parseInt(value, 10) || 0;
         if (type === 'driver') {
-            setLocalDrivers(localDrivers.map(d => d.id === id ? { ...d, points } : d));
+            setLocalDrivers(prev => prev.map(d => d.id === id ? { ...d, points } : d));
         } else {
-            setLocalConstructors(localConstructors.map(c => c.id === id ? { ...c, points } : c));
+            setLocalConstructors(prev => prev.map(c => c.id === id ? { ...c, points } : c));
         }
     };
+
+    const handleSavePrices = () => {
+        // Convert strings back to floats when saving
+        const cleanDrivers = localDrivers.map(d => ({
+            ...d, 
+            price: parseFloat(d.price.toString()) || 0 
+        }));
+        const cleanConstructors = localConstructors.map(c => ({
+            ...c, 
+            price: parseFloat(c.price.toString()) || 0 
+        }));
+        onUpdatePrices(cleanDrivers, cleanConstructors);
+    };
+
+    // For finalize, we need to ensure we pass clean numbers as well, although usually 
+    // finalize only deals with points. But to be safe on type integrity:
+    const handleFinalize = () => {
+         const cleanDrivers = localDrivers.map(d => ({
+            ...d, 
+            price: parseFloat(d.price.toString()) || 0 
+        }));
+        const cleanConstructors = localConstructors.map(c => ({
+            ...c, 
+            price: parseFloat(c.price.toString()) || 0 
+        }));
+        onFinalizeRound(cleanDrivers, cleanConstructors, gpName, users);
+    }
     
     return (
         <div className="container">
@@ -377,17 +406,29 @@ const AdminPanel: FC<{
                     {localDrivers.sort((a,b) => a.id - b.id).map(d => (
                         <div key={d.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
                             <span style={{flex: 1}}>{d.name}</span>
-                            <input type="number" value={d.price} onChange={e => handlePriceChange(d.id, 'driver', e.target.value)} style={{width: '100px'}} step="0.1"/>
+                            <input 
+                                type="number" 
+                                value={d.price} 
+                                onChange={e => handlePriceChange(d.id, 'driver', e.target.value)} 
+                                style={{width: '100px'}} 
+                                step="0.1"
+                            />
                         </div>
                     ))}
                     <h4 style={{marginTop: '1rem'}}>Construtores</h4>
                     {localConstructors.sort((a,b) => a.id - b.id).map(c => (
                         <div key={c.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
                             <span style={{flex: 1}}>{c.name}</span>
-                            <input type="number" value={c.price} onChange={e => handlePriceChange(c.id, 'constructor', e.target.value)} style={{width: '100px'}} step="0.1" />
+                            <input 
+                                type="number" 
+                                value={c.price} 
+                                onChange={e => handlePriceChange(c.id, 'constructor', e.target.value)} 
+                                style={{width: '100px'}} 
+                                step="0.1" 
+                            />
                         </div>
                     ))}
-                    <button onClick={() => onUpdatePrices(localDrivers, localConstructors)} style={{marginTop: '1rem'}}>Salvar Preços</button>
+                    <button onClick={handleSavePrices} style={{marginTop: '1rem'}}>Salvar Preços</button>
                 </div>
                  <div>
                     <h3>Lançar Pontos da Etapa</h3>
@@ -415,7 +456,7 @@ const AdminPanel: FC<{
                             placeholder="Ex: GP de Interlagos"
                          />
                     </div>
-                    <button onClick={() => onFinalizeRound(localDrivers, localConstructors, gpName, users)} style={{width: '100%'}}>Calcular e Finalizar Etapa</button>
+                    <button onClick={handleFinalize} style={{width: '100%'}}>Calcular e Finalizar Etapa</button>
                 </div>
                  <div>
                     <h3>Prazo Final Para Bloqueio de Equipe</h3>
