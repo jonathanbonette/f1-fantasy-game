@@ -118,7 +118,7 @@ const initialConstructors: Constructor[] = [
 ];
 
 const CHAMPIONSHIP_POINTS_MAP = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
-const BUDGET = 100;
+const BUDGET = 110;
 
 // --- Helper Hook for Session Storage ---
 function useSessionStorageState<T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] {
