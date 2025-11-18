@@ -118,7 +118,7 @@ const initialConstructors: Constructor[] = [
 ];
 
 const CHAMPIONSHIP_POINTS_MAP = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
-const BUDGET = 110;
+const BUDGET = 100;
 
 // --- Helper Hook for Session Storage ---
 function useSessionStorageState<T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] {
@@ -217,6 +217,7 @@ const TeamSelection: FC<{
 }> = ({ drivers, constructors, teamName, currentUserTeam, onSaveTeam, deadline }) => {
     const [selectedDrivers, setSelectedDrivers] = useState<number[]>(currentUserTeam?.team.drivers || []);
     const [selectedConstructors, setSelectedConstructors] = useState<number[]>(currentUserTeam?.team.constructors || []);
+    const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>('default');
 
     useEffect(() => {
         setSelectedDrivers(currentUserTeam?.team.drivers || []);
@@ -231,6 +232,26 @@ const TeamSelection: FC<{
         const constructorCost = selectedConstructors.reduce((sum, id) => sum + (constructors.find(c => c.id === id)?.price || 0), 0);
         return driverCost + constructorCost;
     }, [selectedDrivers, selectedConstructors, drivers, constructors]);
+
+    const sortedDrivers = useMemo(() => {
+        const items = [...drivers];
+        if (sortOrder === 'asc') {
+            return items.sort((a, b) => a.price - b.price);
+        } else if (sortOrder === 'desc') {
+            return items.sort((a, b) => b.price - a.price);
+        }
+        return items.sort((a, b) => a.id - b.id);
+    }, [drivers, sortOrder]);
+
+    const sortedConstructors = useMemo(() => {
+        const items = [...constructors];
+        if (sortOrder === 'asc') {
+            return items.sort((a, b) => a.price - b.price);
+        } else if (sortOrder === 'desc') {
+            return items.sort((a, b) => b.price - a.price);
+        }
+        return items.sort((a, b) => a.id - b.id);
+    }, [constructors, sortOrder]);
 
     const remainingBudget = BUDGET - teamCost;
 
@@ -275,12 +296,28 @@ const TeamSelection: FC<{
                     O prazo para montar a equipe encerrou. As equipes estão bloqueadas para esta etapa.
                 </div>
             )}
-            <h2>Monte sua Equipe - <span style={{color: 'var(--primary-color)'}}>{teamName}</span></h2>
+            <div className="container-header" style={{flexWrap: 'wrap', gap: '1rem'}}>
+                 <h2>Monte sua Equipe - <span style={{color: 'var(--primary-color)'}}>{teamName}</span></h2>
+                 <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                    <label htmlFor="sortOrder" style={{fontWeight: 600, color: 'var(--text-secondary-color)'}}>Preço:</label>
+                    <select 
+                        id="sortOrder"
+                        value={sortOrder} 
+                        onChange={(e) => setSortOrder(e.target.value as any)}
+                        style={{padding: '0.5rem', width: 'auto'}}
+                    >
+                        <option value="default">Padrão</option>
+                        <option value="desc">Maior Preço</option>
+                        <option value="asc">Menor Preço</option>
+                    </select>
+                 </div>
+            </div>
+
             <div className="grid">
                 <div>
                     <h3>Pilotos ({selectedDrivers.length}/5)</h3>
                     <div className="item-list">
-                        {drivers.map(driver => (
+                        {sortedDrivers.map(driver => (
                             <div key={driver.id} className={`item ${selectedDrivers.includes(driver.id) ? 'selected' : ''}`}>
                                 <span className="item-name">{driver.name}</span>
                                 <span>${driver.price.toFixed(1)}M</span>
@@ -296,7 +333,7 @@ const TeamSelection: FC<{
                 <div>
                     <h3>Construtores ({selectedConstructors.length}/2)</h3>
                      <div className="item-list">
-                        {constructors.map(c => (
+                        {sortedConstructors.map(c => (
                             <div key={c.id} className={`item ${selectedConstructors.includes(c.id) ? 'selected' : ''}`}>
                                 <span className="item-name">{c.name}</span>
                                 <span>${c.price.toFixed(1)}M</span>
@@ -704,6 +741,10 @@ const App: FC = () => {
                         batch.set(docRef, constructor);
                     });
                     
+                    // IMPORTANT: Admin account is no longer created here for security reasons.
+                    // Please create the 'admin' account manually in the Firebase Console > Firestore Database > 'accounts' collection.
+                    // Document ID: 'admin', fields: username: 'admin', password: 'your-secure-password', teamName: 'Administrator'
+
                     const configRef = doc(db, 'config', 'main');
                     batch.set(configRef, { deadline: null });
                     
