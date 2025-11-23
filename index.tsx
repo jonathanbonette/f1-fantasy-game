@@ -64,6 +64,7 @@ interface RaceResult {
     userName: string; // This is the Team Name
     weekendPoints: number;
     championshipPointsAwarded: number;
+    teamSnapshot?: Team; // Snapshot of the team at the time of the race
 }
 
 interface RaceWeekend {
@@ -206,35 +207,18 @@ const CountdownTimer: FC<{ deadline: string | null }> = ({ deadline }) => {
     );
 };
 
-const MyTeamDisplay: FC<{
-    team: Team | undefined;
+// Reusable component for displaying the cards
+const TeamGrid: FC<{
+    team: Team;
     drivers: Driver[];
     constructors: Constructor[];
 }> = ({ team, drivers, constructors }) => {
-    if (!team || (team.drivers.length === 0 && team.constructors.length === 0)) {
-        return (
-            <div className="container" style={{textAlign: 'center'}}>
-                <h2>Você ainda não montou sua equipe.</h2>
-                <p>Vá até a aba "Montar Equipe" para selecionar seus pilotos e construtores.</p>
-            </div>
-        );
-    }
-
     const myDrivers = drivers.filter(d => team.drivers.includes(d.id));
     const myConstructors = constructors.filter(c => team.constructors.includes(c.id));
 
-    const totalValue = [...myDrivers, ...myConstructors].reduce((acc, curr) => acc + curr.price, 0);
-
     return (
-        <div className="container">
-             <div className="container-header">
-                <h2>Minha Seleção Atual</h2>
-                <div className="budget-info" style={{fontSize: '1.1rem'}}>
-                    Valor da Equipe: <span className="cost">${totalValue.toFixed(1)}M</span>
-                </div>
-             </div>
-
-             <h3 style={{marginTop: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem'}}>Pilotos</h3>
+        <>
+             <h4 style={{marginTop: '0.5rem', color: 'var(--text-secondary-color)'}}>Pilotos</h4>
              <div className="my-team-grid">
                  {myDrivers.map(driver => (
                      <div key={driver.id} className="my-team-card">
@@ -255,7 +239,7 @@ const MyTeamDisplay: FC<{
                  ))}
              </div>
 
-             <h3 style={{marginTop: '2rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem'}}>Construtores</h3>
+             <h4 style={{marginTop: '1.5rem', color: 'var(--text-secondary-color)'}}>Construtores</h4>
              <div className="my-team-grid">
                  {myConstructors.map(constructor => (
                      <div key={constructor.id} className="my-team-card">
@@ -275,6 +259,124 @@ const MyTeamDisplay: FC<{
                       </div>
                  ))}
              </div>
+        </>
+    );
+};
+
+const MyTeamDisplay: FC<{
+    team: Team | undefined;
+    drivers: Driver[];
+    constructors: Constructor[];
+}> = ({ team, drivers, constructors }) => {
+    if (!team || (team.drivers.length === 0 && team.constructors.length === 0)) {
+        return (
+            <div className="container" style={{textAlign: 'center'}}>
+                <h2>Você ainda não montou sua equipe.</h2>
+                <p>Vá até a aba "Montar Equipe" para selecionar seus pilotos e construtores.</p>
+            </div>
+        );
+    }
+
+    // Helper to calculate cost for "Minha Equipe" only
+    const myDrivers = drivers.filter(d => team.drivers.includes(d.id));
+    const myConstructors = constructors.filter(c => team.constructors.includes(c.id));
+    const totalValue = [...myDrivers, ...myConstructors].reduce((acc, curr) => acc + curr.price, 0);
+
+    return (
+        <div className="container">
+             <div className="container-header">
+                <h2>Minha Seleção Atual</h2>
+                <div className="budget-info" style={{fontSize: '1.1rem'}}>
+                    Valor da Equipe: <span className="cost">${totalValue.toFixed(1)}M</span>
+                </div>
+             </div>
+             
+             {/* Uses the shared Grid component */}
+             <TeamGrid team={team} drivers={drivers} constructors={constructors} />
+        </div>
+    );
+};
+
+const ParticipantsTeams: FC<{
+    users: User[];
+    drivers: Driver[];
+    constructors: Constructor[];
+    deadline: string | null;
+    raceHistory: RaceWeekend[];
+}> = ({ users, drivers, constructors, deadline, raceHistory }) => {
+    const [selectedViewId, setSelectedViewId] = useState<number | 'current'>('current');
+    
+    // Check if the current round is locked
+    const isLocked = deadline ? new Date() > new Date(deadline) : false;
+
+    // Helper to render user sections
+    const renderUserList = (data: { name: string, team?: Team }[]) => {
+        if (data.length === 0) return <p>Nenhum dado encontrado.</p>;
+
+        return (
+            <div>
+                {data.map(userItem => (
+                    <div key={userItem.name} className="participant-section">
+                        <div style={{borderBottom: '1px solid #444', marginBottom: '1rem', paddingBottom: '0.5rem', display:'flex', alignItems:'center', gap:'10px'}}>
+                            <h3 style={{margin:0}}>{userItem.name}</h3>
+                        </div>
+                        {userItem.team ? (
+                            <TeamGrid team={userItem.team} drivers={drivers} constructors={constructors} />
+                        ) : (
+                            <p style={{fontStyle: 'italic', color: '#666'}}>Equipe não disponível.</p>
+                        )}
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    // Content logic
+    let content;
+
+    if (selectedViewId === 'current') {
+        if (!isLocked) {
+             content = (
+                <div className="lock-notification" style={{marginTop: '2rem'}}>
+                    <h3 style={{color: 'var(--text-color)'}}>Equipes Ocultas</h3>
+                    <p>As equipes dos participantes só estarão visíveis após o encerramento do prazo para montagem ({deadline ? new Date(deadline).toLocaleString() : 'Data não definida'}).</p>
+                </div>
+            );
+        } else {
+             const userData = users.map(u => ({ name: u.name, team: u.team }));
+             content = renderUserList(userData);
+        }
+    } else {
+        // Historical view
+        const weekend = raceHistory.find(r => r.id === selectedViewId);
+        if (weekend) {
+            const resultData = weekend.results.map(r => ({ name: r.userName, team: r.teamSnapshot }));
+            content = renderUserList(resultData);
+        } else {
+            content = <p>Etapa não encontrada.</p>;
+        }
+    }
+
+    return (
+        <div className="container">
+            <div className="container-header">
+                <h2>Equipes dos Participantes</h2>
+                <select 
+                    value={selectedViewId} 
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        setSelectedViewId(val === 'current' ? 'current' : Number(val));
+                    }}
+                >
+                    <option value="current">Etapa Atual (Ao Vivo)</option>
+                    {[...raceHistory].reverse().map(weekend => (
+                        <option key={weekend.id} value={weekend.id}>
+                            {weekend.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
+            {content}
         </div>
     );
 };
@@ -773,7 +875,7 @@ const TeamNameSetup: FC<{ onSave: (teamName: string) => void; users: User[] }> =
 
 // --- Main App Component ---
 const App: FC = () => {
-    const [view, setView] = useState<'team' | 'my-team' | 'results' | 'standings'>('team');
+    const [view, setView] = useState<'team' | 'my-team' | 'participants-teams' | 'results' | 'standings'>('team');
     const [firebaseError, setFirebaseError] = useState<boolean>(false);
     
     // State is now fetched from Firestore, not local storage
@@ -813,7 +915,7 @@ const App: FC = () => {
                         const docRef = doc(db, 'constructors', constructor.id.toString());
                         batch.set(docRef, constructor);
                     });
-
+                    
                     const configRef = doc(db, 'config', 'main');
                     batch.set(configRef, { deadline: null });
                     
@@ -944,6 +1046,8 @@ const App: FC = () => {
                     userName: sortedUser.name,
                     weekendPoints: sortedUser.weekendPoints,
                     championshipPointsAwarded,
+                    // SNAPSHOT THE TEAM HERE
+                    teamSnapshot: sortedUser.team
                 });
                 
                 const userRef = doc(db, 'users', sortedUser.name);
@@ -1123,12 +1227,14 @@ const App: FC = () => {
             <nav className="tabs">
                 <button className={`tab-button ${view === 'team' ? 'active' : ''}`} onClick={() => setView('team')}>Montar Equipe</button>
                 <button className={`tab-button ${view === 'my-team' ? 'active' : ''}`} onClick={() => setView('my-team')}>Minha Equipe</button>
+                <button className={`tab-button ${view === 'participants-teams' ? 'active' : ''}`} onClick={() => setView('participants-teams')}>Equipes dos Participantes</button>
                 <button className={`tab-button ${view === 'results' ? 'active' : ''}`} onClick={() => setView('results')}>Resultados da Etapa</button>
                 <button className={`tab-button ${view === 'standings' ? 'active' : ''}`} onClick={() => setView('standings')}>Classificação Geral</button>
             </nav>
 
             {view === 'team' && <TeamSelection drivers={drivers} constructors={constructors} teamName={currentUser.teamName} currentUserTeam={currentUserTeam} onSaveTeam={handleSaveTeam} deadline={deadline} />}
             {view === 'my-team' && <MyTeamDisplay team={currentUserTeam?.team} drivers={drivers} constructors={constructors} />}
+            {view === 'participants-teams' && <ParticipantsTeams users={users} drivers={drivers} constructors={constructors} deadline={deadline} raceHistory={raceHistory} />}
             {view === 'results' && <RaceResults raceHistory={raceHistory} />}
             {view === 'standings' && <Standings users={users} />}
         </>
