@@ -551,7 +551,7 @@ const AdminPanel: FC<{
     deadline: string | null;
     onSetDeadline: (deadline: string) => void;
 }> = ({ drivers, constructors, onUpdatePrices, onFinalizeRound, deadline, onSetDeadline, users }) => {
-    const [activeTab, setActiveTab] = useState<'prices' | 'points' | 'deadline'>('prices');
+    const [activeTab, setActiveTab] = useState<'upload' | 'prices' | 'points' | 'deadline'>('upload');
     const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>('default');
     
     // Local state uses flexible types for prices to handle text inputs correctly during editing
@@ -565,6 +565,50 @@ const AdminPanel: FC<{
         setLocalDrivers(drivers.map(d => ({ ...d })));
         setLocalConstructors(constructors.map(c => ({ ...c })));
     }, [drivers, constructors]);
+
+    const parsePrice = (priceStr: string): number => {
+        if (!priceStr) return 0;
+        const cleaned = priceStr.replace(/[^\d.]/g, '');
+        return parseFloat(cleaned) || 0;
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'drivers' | 'constructors') => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const json = JSON.parse(event.target?.result as string);
+                if (type === 'drivers') {
+                    setLocalDrivers(prev => prev.map(d => {
+                        const match = json.find((item: any) => item.nome_completo === d.name);
+                        if (match) {
+                            const newPrice = parsePrice(match.preco);
+                            const newPoints = match.pontos_da_corrida !== "" ? parseInt(match.pontos_da_corrida, 10) : d.points;
+                            return { ...d, price: newPrice, points: isNaN(newPoints) ? d.points : newPoints };
+                        }
+                        return d;
+                    }));
+                } else {
+                    setLocalConstructors(prev => prev.map(c => {
+                        const match = json.find((item: any) => item.nome_da_equipe === c.name);
+                        if (match) {
+                            const newPrice = parsePrice(match.preco);
+                            const newPoints = match.pontos_da_corrida !== "" ? parseInt(match.pontos_da_corrida, 10) : c.points;
+                            return { ...c, price: newPrice, points: isNaN(newPoints) ? c.points : newPoints };
+                        }
+                        return c;
+                    }));
+                }
+                alert(`Arquivo de ${type === 'drivers' ? 'Pilotos' : 'Construtores'} carregado com sucesso!`);
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao processar o arquivo JSON.");
+            }
+        };
+        reader.readAsText(file);
+    };
 
     const sortedDrivers = useMemo(() => {
         const items = [...localDrivers];
@@ -636,10 +680,46 @@ const AdminPanel: FC<{
             <h2>Painel do Administrador</h2>
             
             <nav className="tabs" style={{ marginBottom: '2rem' }}>
+                <button className={`tab-button ${activeTab === 'upload' ? 'active' : ''}`} onClick={() => setActiveTab('upload')}>Enviar Arquivo</button>
                 <button className={`tab-button ${activeTab === 'prices' ? 'active' : ''}`} onClick={() => setActiveTab('prices')}>Definir Preços</button>
                 <button className={`tab-button ${activeTab === 'points' ? 'active' : ''}`} onClick={() => setActiveTab('points')}>Lançar Pontos da Etapa</button>
                 <button className={`tab-button ${activeTab === 'deadline' ? 'active' : ''}`} onClick={() => setActiveTab('deadline')}>Prazo de Bloqueio</button>
             </nav>
+
+            {activeTab === 'upload' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <h3>Enviar Arquivos de Dados</h3>
+                    <p style={{ color: 'var(--text-secondary-color)' }}>Carregue os arquivos JSON para preencher automaticamente os preços e pontos.</p>
+                    
+                    <div className="grid">
+                        <div className="card" style={{ background: 'var(--background-color)', border: '1px solid var(--border-color)' }}>
+                            <h4 style={{ marginBottom: '1rem' }}>Pilotos</h4>
+                            <input 
+                                type="file" 
+                                accept=".json" 
+                                onChange={(e) => handleFileUpload(e, 'drivers')}
+                                style={{ border: 'none', padding: '0' }}
+                            />
+                            <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', color: 'var(--text-secondary-color)' }}>Arquivo: pilotos.json</p>
+                        </div>
+                        
+                        <div className="card" style={{ background: 'var(--background-color)', border: '1px solid var(--border-color)' }}>
+                            <h4 style={{ marginBottom: '1rem' }}>Construtores</h4>
+                            <input 
+                                type="file" 
+                                accept=".json" 
+                                onChange={(e) => handleFileUpload(e, 'constructors')}
+                                style={{ border: 'none', padding: '0' }}
+                            />
+                            <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', color: 'var(--text-secondary-color)' }}>Arquivo: construtores.json</p>
+                        </div>
+                    </div>
+                    
+                    <div className="lock-notification" style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-color)', color: 'var(--text-secondary-color)' }}>
+                        <p>Após carregar os arquivos, você pode revisar os dados nas abas <strong>Definir Preços</strong> e <strong>Lançar Pontos da Etapa</strong> antes de salvar.</p>
+                    </div>
+                </div>
+            )}
 
             {activeTab === 'prices' && (
                 <div>
