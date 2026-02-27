@@ -119,7 +119,7 @@ const initialConstructors: Constructor[] = [
 ];
 
 const CHAMPIONSHIP_POINTS_MAP = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
-const BUDGET = 110;
+const BUDGET = 100;
 
 // --- Helper Hook for Session Storage ---
 function useSessionStorageState<T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] {
@@ -551,10 +551,13 @@ const AdminPanel: FC<{
     deadline: string | null;
     onSetDeadline: (deadline: string) => void;
 }> = ({ drivers, constructors, onUpdatePrices, onFinalizeRound, deadline, onSetDeadline, users }) => {
+    const [activeTab, setActiveTab] = useState<'prices' | 'points' | 'deadline'>('prices');
+    const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>('default');
+    
     // Local state uses flexible types for prices to handle text inputs correctly during editing
     // This prevents decimal points from disappearing while typing
-    const [localDrivers, setLocalDrivers] = useState<(Omit<Driver, 'price'> & { price: number | string })[]>([...drivers]);
-    const [localConstructors, setLocalConstructors] = useState<(Omit<Constructor, 'price'> & { price: number | string })[]>([...constructors]);
+    const [localDrivers, setLocalDrivers] = useState<(Omit<Driver, 'price'> & { price: number | string })[]>([]);
+    const [localConstructors, setLocalConstructors] = useState<(Omit<Constructor, 'price'> & { price: number | string })[]>([]);
     const [gpName, setGpName] = useState('');
     const [newDeadline, setNewDeadline] = useState(deadline ? deadline.slice(0, 16) : '');
 
@@ -562,6 +565,26 @@ const AdminPanel: FC<{
         setLocalDrivers(drivers.map(d => ({ ...d })));
         setLocalConstructors(constructors.map(c => ({ ...c })));
     }, [drivers, constructors]);
+
+    const sortedDrivers = useMemo(() => {
+        const items = [...localDrivers];
+        if (sortOrder === 'asc') {
+            return items.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+        } else if (sortOrder === 'desc') {
+            return items.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+        }
+        return items.sort((a, b) => a.id - b.id);
+    }, [localDrivers, sortOrder]);
+
+    const sortedConstructors = useMemo(() => {
+        const items = [...localConstructors];
+        if (sortOrder === 'asc') {
+            return items.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+        } else if (sortOrder === 'desc') {
+            return items.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+        }
+        return items.sort((a, b) => a.id - b.id);
+    }, [localConstructors, sortOrder]);
 
     const handlePriceChange = (id: number, type: 'driver' | 'constructor', value: string) => {
         // Store value as string temporarily to allow typing decimals like "29."
@@ -611,54 +634,106 @@ const AdminPanel: FC<{
     return (
         <div className="container">
             <h2>Painel do Administrador</h2>
-            <div className="grid">
+            
+            <nav className="tabs" style={{ marginBottom: '2rem' }}>
+                <button className={`tab-button ${activeTab === 'prices' ? 'active' : ''}`} onClick={() => setActiveTab('prices')}>Definir Preços</button>
+                <button className={`tab-button ${activeTab === 'points' ? 'active' : ''}`} onClick={() => setActiveTab('points')}>Lançar Pontos da Etapa</button>
+                <button className={`tab-button ${activeTab === 'deadline' ? 'active' : ''}`} onClick={() => setActiveTab('deadline')}>Prazo de Bloqueio</button>
+            </nav>
+
+            {activeTab === 'prices' && (
                 <div>
-                    <h3>Definir Preços</h3>
-                    <h4>Pilotos</h4>
-                    {localDrivers.sort((a,b) => a.id - b.id).map(d => (
-                        <div key={d.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-                            <span style={{flex: 1}}>{d.name}</span>
-                            <input 
-                                type="number" 
-                                value={d.price} 
-                                onChange={e => handlePriceChange(d.id, 'driver', e.target.value)} 
-                                style={{width: '100px'}} 
-                                step="0.1"
-                            />
+                    <div className="container-header">
+                        <h3>Definir Preços</h3>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                            <label htmlFor="adminSortOrderPrices" style={{fontWeight: 600, color: 'var(--text-secondary-color)'}}>Preço:</label>
+                            <select 
+                                id="adminSortOrderPrices"
+                                value={sortOrder} 
+                                onChange={(e) => setSortOrder(e.target.value as any)}
+                                style={{padding: '0.5rem', width: 'auto'}}
+                            >
+                                <option value="default">Padrão</option>
+                                <option value="desc">Maior Preço</option>
+                                <option value="asc">Menor Preço</option>
+                            </select>
                         </div>
-                    ))}
-                    <h4 style={{marginTop: '1rem'}}>Construtores</h4>
-                    {localConstructors.sort((a,b) => a.id - b.id).map(c => (
-                        <div key={c.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-                            <span style={{flex: 1}}>{c.name}</span>
-                            <input 
-                                type="number" 
-                                value={c.price} 
-                                onChange={e => handlePriceChange(c.id, 'constructor', e.target.value)} 
-                                style={{width: '100px'}} 
-                                step="0.1" 
-                            />
+                    </div>
+                    <div className="grid">
+                        <div>
+                            <h4>Pilotos</h4>
+                            {sortedDrivers.map(d => (
+                                <div key={d.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                                    <span style={{flex: 1}}>{d.name}</span>
+                                    <input 
+                                        type="number" 
+                                        value={d.price} 
+                                        onChange={e => handlePriceChange(d.id, 'driver', e.target.value)} 
+                                        style={{width: '100px'}} 
+                                        step="0.1"
+                                    />
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                    <button onClick={handleSavePrices} style={{marginTop: '1rem'}}>Salvar Preços</button>
+                        <div>
+                            <h4>Construtores</h4>
+                            {sortedConstructors.map(c => (
+                                <div key={c.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                                    <span style={{flex: 1}}>{c.name}</span>
+                                    <input 
+                                        type="number" 
+                                        value={c.price} 
+                                        onChange={e => handlePriceChange(c.id, 'constructor', e.target.value)} 
+                                        style={{width: '100px'}} 
+                                        step="0.1" 
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <button onClick={handleSavePrices} style={{marginTop: '2rem', width: '100%'}}>Salvar Preços</button>
                 </div>
-                 <div>
-                    <h3>Lançar Pontos da Etapa</h3>
-                    <h4>Pilotos</h4>
-                    {localDrivers.sort((a,b) => a.id - b.id).map(d => (
-                        <div key={d.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-                            <span style={{flex: 1}}>{d.name}</span>
-                            <input type="number" value={d.points} onChange={e => handlePointsChange(d.id, 'driver', e.target.value)} style={{width: '100px'}} />
+            )}
+
+            {activeTab === 'points' && (
+                <div>
+                    <div className="container-header">
+                        <h3>Lançar Pontos da Etapa</h3>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                            <label htmlFor="adminSortOrderPoints" style={{fontWeight: 600, color: 'var(--text-secondary-color)'}}>Preço:</label>
+                            <select 
+                                id="adminSortOrderPoints"
+                                value={sortOrder} 
+                                onChange={(e) => setSortOrder(e.target.value as any)}
+                                style={{padding: '0.5rem', width: 'auto'}}
+                            >
+                                <option value="default">Padrão</option>
+                                <option value="desc">Maior Preço</option>
+                                <option value="asc">Menor Preço</option>
+                            </select>
                         </div>
-                    ))}
-                    <h4 style={{marginTop: '1rem'}}>Construtores</h4>
-                    {localConstructors.sort((a,b) => a.id - b.id).map(c => (
-                        <div key={c.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-                            <span style={{flex: 1}}>{c.name}</span>
-                            <input type="number" value={c.points} onChange={e => handlePointsChange(c.id, 'constructor', e.target.value)} style={{width: '100px'}} />
+                    </div>
+                    <div className="grid">
+                        <div>
+                            <h4>Pilotos</h4>
+                            {sortedDrivers.map(d => (
+                                <div key={d.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                                    <span style={{flex: 1}}>{d.name}</span>
+                                    <input type="number" value={d.points} onChange={e => handlePointsChange(d.id, 'driver', e.target.value)} style={{width: '100px'}} />
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                    <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
+                        <div>
+                            <h4>Construtores</h4>
+                            {sortedConstructors.map(c => (
+                                <div key={c.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                                    <span style={{flex: 1}}>{c.name}</span>
+                                    <input type="number" value={c.points} onChange={e => handlePointsChange(c.id, 'constructor', e.target.value)} style={{width: '100px'}} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
                          <label htmlFor="gpName" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Nome do GP</label>
                          <input
                             id="gpName"
@@ -670,7 +745,10 @@ const AdminPanel: FC<{
                     </div>
                     <button onClick={handleFinalize} style={{width: '100%'}}>Calcular e Finalizar Etapa</button>
                 </div>
-                 <div>
+            )}
+
+            {activeTab === 'deadline' && (
+                <div>
                     <h3>Prazo Final Para Bloqueio de Equipe</h3>
                     <p style={{marginBottom: '1rem', color: 'var(--text-secondary-color)'}}>Defina a data e hora limite para os usuários modificarem suas equipes.</p>
                     <input 
@@ -686,7 +764,7 @@ const AdminPanel: FC<{
                         Salvar Prazo
                     </button>
                 </div>
-            </div>
+            )}
         </div>
     );
 }
