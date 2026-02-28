@@ -83,40 +83,59 @@ interface Account {
 
 // --- Initial Data ---
 const initialDrivers: Driver[] = [
-    { id: 1, name: 'Max Verstappen', price: 30.0, points: 0 },
-    { id: 2, name: 'Sergio Pérez', price: 18.0, points: 0 },
-    { id: 3, name: 'Charles Leclerc', price: 21.0, points: 0 },
-    { id: 4, name: 'Carlos Sainz', price: 20.0, points: 0 },
-    { id: 5, name: 'Lando Norris', price: 22.0, points: 0 },
-    { id: 6, name: 'Oscar Piastri', price: 19.0, points: 0 },
-    { id: 7, name: 'Lewis Hamilton', price: 25.0, points: 0 },
-    { id: 8, name: 'George Russell', price: 23.0, points: 0 },
-    { id: 9, name: 'Fernando Alonso', price: 15.0, points: 0 },
-    { id: 10, name: 'Lance Stroll', price: 9.0, points: 0 },
-    { id: 11, name: 'Pierre Gasly', price: 8.0, points: 0 },
-    { id: 12, name: 'Esteban Ocon', price: 8.0, points: 0 },
-    { id: 13, name: 'Yuki Tsunoda', price: 7.5, points: 0 },
-    { id: 14, name: 'Daniel Ricciardo', price: 7.0, points: 0 },
-    { id: 15, name: 'Valtteri Bottas', price: 6.0, points: 0 },
-    { id: 16, name: 'Zhou Guanyu', price: 5.5, points: 0 },
-    { id: 17, name: 'Alexander Albon', price: 8.5, points: 0 },
-    { id: 18, name: 'Logan Sargeant', price: 5.0, points: 0 },
-    { id: 19, name: 'Kevin Magnussen', price: 6.5, points: 0 },
-    { id: 20, name: 'Nico Hülkenberg', price: 7.0, points: 0 },
+    { id: 1, name: 'Max Verstappen', price: 27.7, points: 0 },
+    { id: 2, name: 'Franco Colapinto', price: 6.2, points: 0 },
+    { id: 3, name: 'Charles Leclerc', price: 22.8, points: 0 },
+    { id: 4, name: 'Carlos Sainz', price: 11.8, points: 0 },
+    { id: 5, name: 'Lando Norris', price: 27.2, points: 0 },
+    { id: 6, name: 'Oscar Piastri', price: 25.5, points: 0 },
+    { id: 7, name: 'Lewis Hamilton', price: 22.5, points: 0 },
+    { id: 8, name: 'George Russell', price: 27.4, points: 0 },
+    { id: 9, name: 'Fernando Alonso', price: 10.0, points: 0 },
+    { id: 10, name: 'Lance Stroll', price: 8.0, points: 0 },
+    { id: 11, name: 'Pierre Gasly', price: 12.0, points: 0 },
+    { id: 12, name: 'Esteban Ocon', price: 7.3, points: 0 },
+    { id: 13, name: 'Isack Hadjar', price: 15.1, points: 0 },
+    { id: 14, name: 'Kimi Antonelli', price: 23.2, points: 0 },
+    { id: 15, name: 'Arvid Lindblad', price: 6.2, points: 0 },
+    { id: 16, name: 'Oliver Bearman', price: 7.4, points: 0 },
+    { id: 17, name: 'Alexander Albon', price: 11.6, points: 0 },
+    { id: 18, name: 'Liam Lawson', price: 6.5, points: 0 },
+    { id: 19, name: 'Gabriel Bortoleto', price: 6.4, points: 0 },
+    { id: 20, name: 'Nico Hulkenberg', price: 6.8, points: 0 },
+    { id: 21, name: 'Sergio Perez', price: 6.0, points: 0 },
+    { id: 23, name: 'Valtteri Bottas', price: 5.9, points: 0 },
 ];
 
 const initialConstructors: Constructor[] = [
-    { id: 1, name: 'Red Bull Racing', price: 28.0, points: 0 },
-    { id: 2, name: 'Ferrari', price: 24.0, points: 0 },
-    { id: 3, name: 'McLaren', price: 25.0, points: 0 },
-    { id: 4, name: 'Mercedes', price: 26.0, points: 0 },
-    { id: 5, name: 'Aston Martin', price: 14.0, points: 0 },
-    { id: 6, name: 'Alpine', price: 9.0, points: 0 },
-    { id: 7, name: 'RB', price: 8.0, points: 0 },
-    { id: 8, name: 'Sauber', price: 6.0, points: 0 },
-    { id: 9, name: 'Williams', price: 7.0, points: 0 },
-    { id: 10, name: 'Haas', price: 6.5, points: 0 },
+    { id: 1, name: 'Red Bull Racing', price: 28.2, points: 0 },
+    { id: 2, name: 'Ferrari', price: 23.3, points: 0 },
+    { id: 3, name: 'McLaren', price: 28.9, points: 0 },
+    { id: 4, name: 'Mercedes', price: 29.3, points: 0 },
+    { id: 5, name: 'Aston Martin', price: 10.3, points: 0 },
+    { id: 6, name: 'Alpine', price: 12.5, points: 0 },
+    { id: 7, name: 'Racing Bulls', price: 6.3, points: 0 },
+    { id: 8, name: 'Audi', price: 6.6, points: 0 },
+    { id: 9, name: 'Williams', price: 12.0, points: 0 },
+    { id: 10, name: 'Haas F1 Team', price: 7.4, points: 0 },
+    { id: 11, name: 'Cadillac', price: 6.0, points: 0 },
 ];
+
+const BASE_PATH = '../../images';
+
+const CONSTRUCTOR_LOGOS: Record<string, string> = {
+    'Red Bull Racing': `${BASE_PATH}/c_rbr.png`,
+    'Ferrari': `${BASE_PATH}/c_ferrari.png`,
+    'McLaren': `${BASE_PATH}/c_mclaren.png`,
+    'Mercedes': `${BASE_PATH}/c_mercedes.png`,
+    'Aston Martin': `${BASE_PATH}/c_aston.png`,
+    'Alpine': `${BASE_PATH}/c_alpine.png`,
+    'Racing Bulls': `${BASE_PATH}/c_rb.png`,
+    'Audi': `${BASE_PATH}/c_audi.png`,
+    'Williams': `${BASE_PATH}/c_williams.png`,
+    'Haas F1 Team': `${BASE_PATH}/c_hass.png`,
+    'Cadillac': `${BASE_PATH}/c_cadillac.png`,
+};
 
 const CHAMPIONSHIP_POINTS_MAP = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 const BUDGET = 100;
@@ -510,7 +529,12 @@ const TeamSelection: FC<{
                      <div className="item-list">
                         {sortedConstructors.map(c => (
                             <div key={c.id} className={`item ${selectedConstructors.includes(c.id) ? 'selected' : ''}`}>
-                                <span className="item-name">{c.name}</span>
+                                <div className="item-name-container">
+                                    <div className="constructor-logo-circle">
+                                        <img src={CONSTRUCTOR_LOGOS[c.name] || 'https://picsum.photos/seed/f1/32/32'} alt={c.name} referrerPolicy="no-referrer" />
+                                    </div>
+                                    <span className="item-name">{c.name}</span>
+                                </div>
                                 <span>${c.price.toFixed(1)}M</span>
                                 <div className="item-action">
                                     <button onClick={() => handleSelectConstructor(c.id)} disabled={isLocked}>
@@ -1073,7 +1097,7 @@ const App: FC = () => {
                         const docRef = doc(db, 'constructors', constructor.id.toString());
                         batch.set(docRef, constructor);
                     });
-                    
+
                     const configRef = doc(db, 'config', 'main');
                     batch.set(configRef, { deadline: null });
                     
