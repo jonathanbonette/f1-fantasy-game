@@ -1454,5 +1454,8 @@ const App: FC = () => {
 };
 
 const container = document.getElementById('root');
-const root = createRoot(container!);
-root.render(<App />);
+if (container && !(window as any)._appInitialized) {
+    (window as any)._appInitialized = true;
+    const root = createRoot(container);
+    root.render(<App />);
+}
