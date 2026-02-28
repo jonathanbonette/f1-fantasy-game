@@ -121,7 +121,7 @@ const initialConstructors: Constructor[] = [
     { id: 11, name: 'Cadillac', price: 6.0, points: 0 },
 ];
 
-const BASE_PATH = './images';
+const BASE_PATH = 'https://jonathanbonette.github.io/f1-fantasy-game/images';
 
 const CONSTRUCTOR_LOGOS: Record<string, string> = {
     'Red Bull Racing': `${BASE_PATH}/c_rbr.png`,
