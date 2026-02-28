@@ -137,6 +137,31 @@ const CONSTRUCTOR_LOGOS: Record<string, string> = {
     'Cadillac': `${BASE_PATH}/c_cadillac.png`,
 };
 
+const DRIVER_PHOTOS: Record<string, string> = {
+    'Max Verstappen': `${BASE_PATH}/max.png`,
+    'Franco Colapinto': `${BASE_PATH}/franco.png`,
+    'Charles Leclerc': `${BASE_PATH}/lecrerc.png`,
+    'Carlos Sainz': `${BASE_PATH}/sainz.png`,
+    'Lando Norris': `${BASE_PATH}/lando.png`,
+    'Oscar Piastri': `${BASE_PATH}/piastri.png`,
+    'Lewis Hamilton': `${BASE_PATH}/hamilton.png`,
+    'George Russell': `${BASE_PATH}/george.png`,
+    'Fernando Alonso': `${BASE_PATH}/alonso.png`,
+    'Lance Stroll': `${BASE_PATH}/stroll.png`,
+    'Pierre Gasly': `${BASE_PATH}/gasly.png`,
+    'Esteban Ocon': `${BASE_PATH}/ocon.png`,
+    'Isack Hadjar': `${BASE_PATH}/hadjar.png`,
+    'Kimi Antonelli': `${BASE_PATH}/kimi.png`,
+    'Arvid Lindblad': `${BASE_PATH}/arvid.png`,
+    'Oliver Bearman': `${BASE_PATH}/bearman.png`,
+    'Alexander Albon': `${BASE_PATH}/albon.png`,
+    'Liam Lawson': `${BASE_PATH}/liam.png`,
+    'Gabriel Bortoleto': `${BASE_PATH}/gabi.png`,
+    'Nico Hulkenberg': `${BASE_PATH}/nico.png`,
+    'Sergio Perez': `${BASE_PATH}/perez.png`,
+    'Valtteri Bottas': `${BASE_PATH}/bottas.png`,
+};
+
 const CHAMPIONSHIP_POINTS_MAP = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 const BUDGET = 100;
 
@@ -513,7 +538,12 @@ const TeamSelection: FC<{
                     <div className="item-list">
                         {sortedDrivers.map(driver => (
                             <div key={driver.id} className={`item ${selectedDrivers.includes(driver.id) ? 'selected' : ''}`}>
-                                <span className="item-name">{driver.name}</span>
+                                <div className="item-name-container">
+                                    <div className="item-logo-circle">
+                                        <img src={DRIVER_PHOTOS[driver.name] || 'https://picsum.photos/seed/driver/32/32'} alt={driver.name} referrerPolicy="no-referrer" />
+                                    </div>
+                                    <span className="item-name">{driver.name}</span>
+                                </div>
                                 <span>${driver.price.toFixed(1)}M</span>
                                 <div className="item-action">
                                     <button onClick={() => handleSelectDriver(driver.id)} disabled={isLocked}>
@@ -530,7 +560,7 @@ const TeamSelection: FC<{
                         {sortedConstructors.map(c => (
                             <div key={c.id} className={`item ${selectedConstructors.includes(c.id) ? 'selected' : ''}`}>
                                 <div className="item-name-container">
-                                    <div className="constructor-logo-circle">
+                                    <div className="item-logo-circle">
                                         <img src={CONSTRUCTOR_LOGOS[c.name] || 'https://picsum.photos/seed/f1/32/32'} alt={c.name} referrerPolicy="no-referrer" />
                                     </div>
                                     <span className="item-name">{c.name}</span>
@@ -1097,7 +1127,7 @@ const App: FC = () => {
                         const docRef = doc(db, 'constructors', constructor.id.toString());
                         batch.set(docRef, constructor);
                     });
-
+                    
                     const configRef = doc(db, 'config', 'main');
                     batch.set(configRef, { deadline: null });
                     
