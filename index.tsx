@@ -449,7 +449,8 @@ const TeamSelection: FC<{
     const teamCost = useMemo(() => {
         const driverCost = selectedDrivers.reduce((sum, id) => sum + (drivers.find(d => d.id === id)?.price || 0), 0);
         const constructorCost = selectedConstructors.reduce((sum, id) => sum + (constructors.find(c => c.id === id)?.price || 0), 0);
-        return driverCost + constructorCost;
+        // Round to 2 decimal places to avoid floating point issues
+        return Math.round((driverCost + constructorCost) * 100) / 100;
     }, [selectedDrivers, selectedConstructors, drivers, constructors]);
 
     const sortedDrivers = useMemo(() => {
@@ -479,7 +480,8 @@ const TeamSelection: FC<{
             setSelectedDrivers(selectedDrivers.filter(dId => dId !== id));
         } else if (selectedDrivers.length < 5) {
             const driverPrice = drivers.find(d => d.id === id)?.price || 0;
-            if (teamCost + driverPrice <= BUDGET) {
+            // Use a small epsilon or round to handle floating point precision
+            if (Math.round((teamCost + driverPrice) * 100) / 100 <= BUDGET) {
                 setSelectedDrivers([...selectedDrivers, id]);
             } else {
                 alert("Orçamento excedido!");
@@ -492,7 +494,8 @@ const TeamSelection: FC<{
             setSelectedConstructors(selectedConstructors.filter(cId => cId !== id));
         } else if (selectedConstructors.length < 2) {
             const constructorPrice = constructors.find(c => c.id === id)?.price || 0;
-            if (teamCost + constructorPrice <= BUDGET) {
+            // Use a small epsilon or round to handle floating point precision
+            if (Math.round((teamCost + constructorPrice) * 100) / 100 <= BUDGET) {
                 setSelectedConstructors([...selectedConstructors, id]);
             } else {
                 alert("Orçamento excedido!");
