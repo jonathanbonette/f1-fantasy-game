@@ -50,6 +50,7 @@ interface Constructor {
 interface Team {
     drivers: number[]; // Store by ID
     constructors: number[]; // Store by ID
+    multiplierDriverId: number | null; // ID of the driver with 2x multiplier
 }
 
 // User represents the fantasy team in the league
@@ -268,7 +269,20 @@ const TeamGrid: FC<{
                      <div key={driver.id} className="my-team-card">
                          <div className="card-top-strip driver"></div>
                          <div className="card-content">
-                             <div className="card-name">{driver.name}</div>
+                             <div className="card-name">
+                                 {driver.name}
+                                 {team.multiplierDriverId === driver.id && (
+                                     <span style={{
+                                         marginLeft: '0.5rem',
+                                         color: '#ffd700',
+                                         fontSize: '0.8rem',
+                                         fontWeight: 'bold',
+                                         border: '1px solid #ffd700',
+                                         padding: '1px 4px',
+                                         borderRadius: '4px'
+                                     }}>2x</span>
+                                 )}
+                             </div>
                              <div className="card-price">${driver.price.toFixed(1)}M</div>
                          </div>
                      </div>
@@ -436,11 +450,13 @@ const TeamSelection: FC<{
 }> = ({ drivers, constructors, teamName, currentUserTeam, onSaveTeam, deadline }) => {
     const [selectedDrivers, setSelectedDrivers] = useState<number[]>(currentUserTeam?.team.drivers || []);
     const [selectedConstructors, setSelectedConstructors] = useState<number[]>(currentUserTeam?.team.constructors || []);
+    const [multiplierDriverId, setMultiplierDriverId] = useState<number | null>(currentUserTeam?.team.multiplierDriverId || null);
     const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>('default');
 
     useEffect(() => {
         setSelectedDrivers(currentUserTeam?.team.drivers || []);
         setSelectedConstructors(currentUserTeam?.team.constructors || []);
+        setMultiplierDriverId(currentUserTeam?.team.multiplierDriverId || null);
     }, [currentUserTeam]);
 
 
@@ -478,6 +494,9 @@ const TeamSelection: FC<{
     const handleSelectDriver = (id: number) => {
         if (selectedDrivers.includes(id)) {
             setSelectedDrivers(selectedDrivers.filter(dId => dId !== id));
+            if (multiplierDriverId === id) {
+                setMultiplierDriverId(null);
+            }
         } else if (selectedDrivers.length < 5) {
             const driverPrice = drivers.find(d => d.id === id)?.price || 0;
             // Use a small epsilon or round to handle floating point precision
@@ -487,6 +506,11 @@ const TeamSelection: FC<{
                 alert("Orçamento excedido!");
             }
         }
+    };
+
+    const handleToggleMultiplier = (id: number) => {
+        if (!selectedDrivers.includes(id)) return;
+        setMultiplierDriverId(multiplierDriverId === id ? null : id);
     };
 
     const handleSelectConstructor = (id: number) => {
@@ -508,7 +532,11 @@ const TeamSelection: FC<{
             alert('Você precisa selecionar 5 pilotos e 2 construtores.');
             return;
         }
-        onSaveTeam(teamName, { drivers: selectedDrivers, constructors: selectedConstructors });
+        if (multiplierDriverId === null) {
+            alert('Por favor, selecione um piloto para receber o bônus 2x.');
+            return;
+        }
+        onSaveTeam(teamName, { drivers: selectedDrivers, constructors: selectedConstructors, multiplierDriverId });
     };
 
     return (
@@ -549,6 +577,20 @@ const TeamSelection: FC<{
                                 </div>
                                 <span>${driver.price.toFixed(1)}M</span>
                                 <div className="item-action">
+                                    {selectedDrivers.includes(driver.id) && (
+                                        <button 
+                                            onClick={() => handleToggleMultiplier(driver.id)} 
+                                            disabled={isLocked}
+                                            style={{
+                                                backgroundColor: multiplierDriverId === driver.id ? '#ffd700' : 'transparent',
+                                                color: multiplierDriverId === driver.id ? '#000' : 'var(--text-color)',
+                                                border: '1px solid #ffd700',
+                                                marginRight: '0.5rem'
+                                            }}
+                                        >
+                                            {multiplierDriverId === driver.id ? '2x Ativo' : 'Ativar 2x'}
+                                        </button>
+                                    )}
                                     <button onClick={() => handleSelectDriver(driver.id)} disabled={isLocked}>
                                         {selectedDrivers.includes(driver.id) ? 'Remover' : 'Add'}
                                     </button>
@@ -582,7 +624,12 @@ const TeamSelection: FC<{
                     <h3>Sua Equipe</h3>
                     <div className="card">
                         <h4>Pilotos:</h4>
-                        {selectedDrivers.map(id => <p key={id}>- {drivers.find(d => d.id === id)?.name}</p>)}
+                        {selectedDrivers.map(id => (
+                            <p key={id}>
+                                - {drivers.find(d => d.id === id)?.name} 
+                                {multiplierDriverId === id && <strong style={{color: '#ffd700', marginLeft: '0.5rem'}}>(2x)</strong>}
+                            </p>
+                        ))}
                         <h4 style={{marginTop: '1rem'}}>Construtores:</h4>
                         {selectedConstructors.map(id => <p key={id}>- {constructors.find(c => c.id === id)?.name}</p>)}
                     </div>
@@ -1245,7 +1292,11 @@ const App: FC = () => {
                 if (!user.team.drivers || !user.team.constructors) {
                      return { ...user, weekendPoints: 0 };
                 }
-                const driverPoints = user.team.drivers.reduce((sum, id) => sum + (finalDrivers.find(d => d.id === id)?.points || 0), 0);
+                const driverPoints = user.team.drivers.reduce((sum, id) => {
+                    const basePoints = finalDrivers.find(d => d.id === id)?.points || 0;
+                    const multiplier = user.team.multiplierDriverId === id ? 2 : 1;
+                    return sum + (basePoints * multiplier);
+                }, 0);
                 const constructorPoints = user.team.constructors.reduce((sum, id) => sum + (finalConstructors.find(c => c.id === id)?.points || 0), 0);
                 return { ...user, weekendPoints: driverPoints + constructorPoints };
             });
@@ -1270,7 +1321,7 @@ const App: FC = () => {
                 if(originalUser) {
                     batch.update(userRef, {
                         championshipPoints: originalUser.championshipPoints + championshipPointsAwarded,
-                        team: { drivers: [], constructors: [] }, // Reset team
+                        team: { drivers: [], constructors: [], multiplierDriverId: null }, // Reset team
                         weekendPoints: 0 // Reset weekend points
                     });
                 }
@@ -1350,7 +1401,7 @@ const App: FC = () => {
             // Create the user/fantasy team entry
             const newUser: User = { 
                 name: teamName, 
-                team: { drivers: [], constructors: [] }, 
+                team: { drivers: [], constructors: [], multiplierDriverId: null }, 
                 weekendPoints: 0, 
                 championshipPoints: 0 
             };
