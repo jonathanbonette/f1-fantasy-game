@@ -164,7 +164,6 @@ const DRIVER_PHOTOS: Record<string, string> = {
 };
 
 const CHAMPIONSHIP_POINTS_MAP = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
-const BUDGET = 100;
 
 // --- Helper Hook for Session Storage ---
 function useSessionStorageState<T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] {
@@ -447,7 +446,8 @@ const TeamSelection: FC<{
     currentUserTeam: User | undefined;
     onSaveTeam: (teamName: string, team: Team) => void;
     deadline: string | null;
-}> = ({ drivers, constructors, teamName, currentUserTeam, onSaveTeam, deadline }) => {
+    budget: number;
+}> = ({ drivers, constructors, teamName, currentUserTeam, onSaveTeam, deadline, budget }) => {
     const [selectedDrivers, setSelectedDrivers] = useState<number[]>(currentUserTeam?.team.drivers || []);
     const [selectedConstructors, setSelectedConstructors] = useState<number[]>(currentUserTeam?.team.constructors || []);
     const [multiplierDriverId, setMultiplierDriverId] = useState<number | null>(currentUserTeam?.team.multiplierDriverId || null);
@@ -489,7 +489,7 @@ const TeamSelection: FC<{
         return items.sort((a, b) => a.id - b.id);
     }, [constructors, sortOrder]);
 
-    const remainingBudget = BUDGET - teamCost;
+    const remainingBudget = budget - teamCost;
 
     const handleSelectDriver = (id: number) => {
         if (selectedDrivers.includes(id)) {
@@ -500,7 +500,7 @@ const TeamSelection: FC<{
         } else if (selectedDrivers.length < 5) {
             const driverPrice = drivers.find(d => d.id === id)?.price || 0;
             // Use a small epsilon or round to handle floating point precision
-            if (Math.round((teamCost + driverPrice) * 100) / 100 <= BUDGET) {
+            if (Math.round((teamCost + driverPrice) * 100) / 100 <= budget) {
                 setSelectedDrivers([...selectedDrivers, id]);
             } else {
                 alert("Orçamento excedido!");
@@ -519,7 +519,7 @@ const TeamSelection: FC<{
         } else if (selectedConstructors.length < 2) {
             const constructorPrice = constructors.find(c => c.id === id)?.price || 0;
             // Use a small epsilon or round to handle floating point precision
-            if (Math.round((teamCost + constructorPrice) * 100) / 100 <= BUDGET) {
+            if (Math.round((teamCost + constructorPrice) * 100) / 100 <= budget) {
                 setSelectedConstructors([...selectedConstructors, id]);
             } else {
                 alert("Orçamento excedido!");
@@ -1287,22 +1287,52 @@ const App: FC = () => {
                 batch.update(docRef, { points: c.points });
             });
             
-            // 2. Calculate weekend points for each user
+            // 2. Calculate weekend points for each user and tie-breaker data
             const usersWithScores = allUsers.map(user => {
                 if (!user.team.drivers || !user.team.constructors) {
-                     return { ...user, weekendPoints: 0 };
+                     return { ...user, weekendPoints: 0, teamCost: 0, multiplierPoints: 0, secondExpensiveDriverPoints: 0 };
                 }
+
+                const userDrivers = user.team.drivers.map(id => finalDrivers.find(d => d.id === id)).filter(Boolean) as Driver[];
+                const userConstructors = user.team.constructors.map(id => finalConstructors.find(c => c.id === id)).filter(Boolean) as Constructor[];
+                
+                const teamCost = userDrivers.reduce((sum, d) => sum + d.price, 0) + userConstructors.reduce((sum, c) => sum + c.price, 0);
+
                 const driverPoints = user.team.drivers.reduce((sum, id) => {
                     const basePoints = finalDrivers.find(d => d.id === id)?.points || 0;
                     const multiplier = user.team.multiplierDriverId === id ? 2 : 1;
                     return sum + (basePoints * multiplier);
                 }, 0);
+
+                const multiplierPoints = (finalDrivers.find(d => d.id === user.team.multiplierDriverId)?.points || 0) * 2;
+                
+                // Second most expensive driver
+                const sortedDriversByPrice = [...userDrivers].sort((a, b) => b.price - a.price);
+                const secondExpensiveDriver = sortedDriversByPrice[1];
+                const secondExpensiveDriverPoints = secondExpensiveDriver?.points || 0;
+
                 const constructorPoints = user.team.constructors.reduce((sum, id) => sum + (finalConstructors.find(c => c.id === id)?.points || 0), 0);
-                return { ...user, weekendPoints: driverPoints + constructorPoints };
+                
+                return { 
+                    ...user, 
+                    weekendPoints: driverPoints + constructorPoints,
+                    teamCost,
+                    multiplierPoints,
+                    secondExpensiveDriverPoints
+                };
             });
 
-            // 3. Sort users by weekend points
-            const sortedUsers = [...usersWithScores].sort((a, b) => b.weekendPoints - a.weekendPoints);
+            // 3. Sort users by weekend points and tie-breakers:
+            // - Higher points wins
+            // - Lower team cost wins
+            // - Higher multiplier points wins
+            // - Higher second expensive driver points wins
+            const sortedUsers = [...usersWithScores].sort((a, b) => {
+                if (b.weekendPoints !== a.weekendPoints) return b.weekendPoints - a.weekendPoints;
+                if (a.teamCost !== b.teamCost) return a.teamCost - b.teamCost; 
+                if (b.multiplierPoints !== a.multiplierPoints) return b.multiplierPoints - a.multiplierPoints;
+                return b.secondExpensiveDriverPoints - a.secondExpensiveDriverPoints;
+            });
 
             // 4. Generate race results and prepare user updates
             const newRaceResults: RaceResult[] = [];
@@ -1477,6 +1507,7 @@ const App: FC = () => {
     
     // 4. Regular User - Main App
     const currentUserTeam = users.find(u => u.name === currentUser?.teamName);
+    const currentBudget = 100 + (raceHistory.length * 0.9);
 
     return (
         <>
@@ -1498,7 +1529,7 @@ const App: FC = () => {
                 <button className={`tab-button ${view === 'standings' ? 'active' : ''}`} onClick={() => setView('standings')}>Classificação Geral</button>
             </nav>
 
-            {view === 'team' && <TeamSelection drivers={drivers} constructors={constructors} teamName={currentUser.teamName} currentUserTeam={currentUserTeam} onSaveTeam={handleSaveTeam} deadline={deadline} />}
+            {view === 'team' && <TeamSelection drivers={drivers} constructors={constructors} teamName={currentUser.teamName} currentUserTeam={currentUserTeam} onSaveTeam={handleSaveTeam} deadline={deadline} budget={currentBudget} />}
             {view === 'my-team' && <MyTeamDisplay team={currentUserTeam?.team} drivers={drivers} constructors={constructors} />}
             {view === 'participants-teams' && <ParticipantsTeams users={users} drivers={drivers} constructors={constructors} deadline={deadline} raceHistory={raceHistory} />}
             {view === 'results' && <RaceResults raceHistory={raceHistory} />}
