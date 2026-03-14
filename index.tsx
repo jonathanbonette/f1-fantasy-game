@@ -1290,7 +1290,15 @@ const App: FC = () => {
             // 2. Calculate weekend points for each user and tie-breaker data
             const usersWithScores = allUsers.map(user => {
                 if (!user.team.drivers || !user.team.constructors) {
-                     return { ...user, weekendPoints: 0, teamCost: 0, multiplierPoints: 0, secondExpensiveDriverPoints: 0 };
+                     return { 
+                         ...user, 
+                         weekendPoints: 0, 
+                         teamCost: 0, 
+                         multiplierPoints: 0, 
+                         bestCommonDriverPoints: 0,
+                         constructorPoints: 0,
+                         survivorPoints: 0
+                     };
                 }
 
                 const userDrivers = user.team.drivers.map(id => finalDrivers.find(d => d.id === id)).filter(Boolean) as Driver[];
@@ -1298,64 +1306,94 @@ const App: FC = () => {
                 
                 const teamCost = userDrivers.reduce((sum, d) => sum + d.price, 0) + userConstructors.reduce((sum, c) => sum + c.price, 0);
 
-                const driverPoints = user.team.drivers.reduce((sum, id) => {
-                    const basePoints = finalDrivers.find(d => d.id === id)?.points || 0;
-                    const multiplier = user.team.multiplierDriverId === id ? 2 : 1;
-                    return sum + (basePoints * multiplier);
-                }, 0);
-
-                const multiplierPoints = (finalDrivers.find(d => d.id === user.team.multiplierDriverId)?.points || 0) * 2;
+                const multiplierDriver = userDrivers.find(d => d.id === user.team.multiplierDriverId);
+                const multiplierPoints = (multiplierDriver?.points || 0) * 2;
                 
-                // Second most expensive driver
-                const sortedDriversByPrice = [...userDrivers].sort((a, b) => b.price - a.price);
-                const secondExpensiveDriver = sortedDriversByPrice[1];
-                const secondExpensiveDriverPoints = secondExpensiveDriver?.points || 0;
-
-                const constructorPoints = user.team.constructors.reduce((sum, id) => sum + (finalConstructors.find(c => c.id === id)?.points || 0), 0);
+                const commonDrivers = userDrivers.filter(d => d.id !== user.team.multiplierDriverId);
+                const commonDriversPoints = commonDrivers.reduce((sum, d) => sum + d.points, 0);
                 
+                const weekendPoints = multiplierPoints + commonDriversPoints + userConstructors.reduce((sum, c) => sum + c.points, 0);
+
+                // Tie breakers
+                const bestCommonDriverPoints = commonDrivers.length > 0 ? Math.max(...commonDrivers.map(d => d.points)) : 0;
+                const constructorPoints = userConstructors.reduce((sum, c) => sum + c.points, 0);
+                const survivorPoints = userDrivers.length > 0 ? Math.min(...userDrivers.map(d => d.points)) : 0;
+
                 return { 
                     ...user, 
-                    weekendPoints: driverPoints + constructorPoints,
+                    weekendPoints,
                     teamCost,
                     multiplierPoints,
-                    secondExpensiveDriverPoints
+                    bestCommonDriverPoints,
+                    constructorPoints,
+                    survivorPoints
                 };
             });
 
             // 3. Sort users by weekend points and tie-breakers:
-            // - Higher points wins
-            // - Lower team cost wins
-            // - Higher multiplier points wins
-            // - Higher second expensive driver points wins
+            // 1. Higher points wins
+            // 2. Lower team cost wins (Efficiency)
+            // 3. Higher multiplier points wins (The "Star")
+            // 4. Higher best common driver points wins (Consistency)
+            // 5. Higher constructor points wins (Team Strength)
+            // 6. Higher survivor points wins (The "Survivor")
             const sortedUsers = [...usersWithScores].sort((a, b) => {
                 if (b.weekendPoints !== a.weekendPoints) return b.weekendPoints - a.weekendPoints;
                 if (a.teamCost !== b.teamCost) return a.teamCost - b.teamCost; 
                 if (b.multiplierPoints !== a.multiplierPoints) return b.multiplierPoints - a.multiplierPoints;
-                return b.secondExpensiveDriverPoints - a.secondExpensiveDriverPoints;
+                if (b.bestCommonDriverPoints !== a.bestCommonDriverPoints) return b.bestCommonDriverPoints - a.bestCommonDriverPoints;
+                if (b.constructorPoints !== a.constructorPoints) return b.constructorPoints - a.constructorPoints;
+                return b.survivorPoints - a.survivorPoints;
             });
 
             // 4. Generate race results and prepare user updates
             const newRaceResults: RaceResult[] = [];
-            sortedUsers.forEach((sortedUser, index) => {
-                const championshipPointsAwarded = CHAMPIONSHIP_POINTS_MAP[index] || 0;
-                newRaceResults.push({
-                    userName: sortedUser.name,
-                    weekendPoints: sortedUser.weekendPoints,
-                    championshipPointsAwarded,
-                    // SNAPSHOT THE TEAM HERE
-                    teamSnapshot: sortedUser.team
-                });
-                
-                const userRef = doc(db, 'users', sortedUser.name);
-                const originalUser = allUsers.find(u => u.name === sortedUser.name);
-                if(originalUser) {
-                    batch.update(userRef, {
-                        championshipPoints: originalUser.championshipPoints + championshipPointsAwarded,
-                        team: { drivers: [], constructors: [], multiplierDriverId: null }, // Reset team
-                        weekendPoints: 0 // Reset weekend points
-                    });
+            
+            // Group users by their tie-breaker values to handle identical teams
+            let i = 0;
+            while (i < sortedUsers.length) {
+                let j = i;
+                // Find all users that are still tied after all criteria
+                while (j < sortedUsers.length && 
+                       sortedUsers[j].weekendPoints === sortedUsers[i].weekendPoints &&
+                       Math.abs(sortedUsers[j].teamCost - sortedUsers[i].teamCost) < 0.01 &&
+                       sortedUsers[j].multiplierPoints === sortedUsers[i].multiplierPoints &&
+                       sortedUsers[j].bestCommonDriverPoints === sortedUsers[i].bestCommonDriverPoints &&
+                       sortedUsers[j].constructorPoints === sortedUsers[i].constructorPoints &&
+                       sortedUsers[j].survivorPoints === sortedUsers[i].survivorPoints) {
+                    j++;
                 }
-            });
+                
+                // Users from i to j-1 are tied
+                const tiedCount = j - i;
+                let totalChampionshipPoints = 0;
+                for (let k = i; k < j; k++) {
+                    totalChampionshipPoints += CHAMPIONSHIP_POINTS_MAP[k] || 0;
+                }
+                const pointsPerUser = totalChampionshipPoints / tiedCount;
+                
+                for (let k = i; k < j; k++) {
+                    const sortedUser = sortedUsers[k];
+                    newRaceResults.push({
+                        userName: sortedUser.name,
+                        weekendPoints: sortedUser.weekendPoints,
+                        championshipPointsAwarded: pointsPerUser,
+                        teamSnapshot: sortedUser.team
+                    });
+                    
+                    const userRef = doc(db, 'users', sortedUser.name);
+                    const originalUser = allUsers.find(u => u.name === sortedUser.name);
+                    if(originalUser) {
+                        batch.update(userRef, {
+                            championshipPoints: originalUser.championshipPoints + pointsPerUser,
+                            team: { drivers: [], constructors: [], multiplierDriverId: null }, // Reset team
+                            weekendPoints: 0 // Reset weekend points
+                        });
+                    }
+                }
+                
+                i = j; // Move to next group
+            }
 
             // 5. Create a new race weekend and add it to history
             const newWeekend: RaceWeekend = {
