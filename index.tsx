@@ -957,12 +957,30 @@ const RaceResults: FC<{ raceHistory: RaceWeekend[] }> = ({ raceHistory }) => {
     const [selectedWeekendId, setSelectedWeekendId] = useState<number | null>(null);
 
     useEffect(() => {
-        if (raceHistory.length > 0) {
+        if (raceHistory.length > 0 && selectedWeekendId === null) {
             setSelectedWeekendId(raceHistory[raceHistory.length - 1].id);
         }
-    }, [raceHistory]);
+    }, [raceHistory, selectedWeekendId]);
 
     const results = useMemo(() => {
+        if (selectedWeekendId === -1) {
+            const cumulative: Record<string, { weekendPoints: number, championshipPointsAwarded: number }> = {};
+            raceHistory.forEach(weekend => {
+                weekend.results.forEach(res => {
+                    if (!cumulative[res.userName]) {
+                        cumulative[res.userName] = { weekendPoints: 0, championshipPointsAwarded: 0 };
+                    }
+                    cumulative[res.userName].weekendPoints += res.weekendPoints;
+                    cumulative[res.userName].championshipPointsAwarded += res.championshipPointsAwarded;
+                });
+            });
+            return Object.entries(cumulative)
+                .map(([userName, data]) => ({
+                    userName,
+                    ...data
+                }))
+                .sort((a, b) => b.championshipPointsAwarded - a.championshipPointsAwarded || b.weekendPoints - a.weekendPoints);
+        }
         if (!selectedWeekendId) return [];
         return raceHistory.find(w => w.id === selectedWeekendId)?.results || [];
     }, [selectedWeekendId, raceHistory]);
@@ -980,12 +998,13 @@ const RaceResults: FC<{ raceHistory: RaceWeekend[] }> = ({ raceHistory }) => {
     return (
         <div className="container">
             <div className="container-header">
-                <h2>Resultados da Etapa</h2>
+                <h2>{selectedWeekendId === -1 ? 'Resultado Geral (Acumulado)' : 'Resultados da Etapa'}</h2>
                 {raceHistory.length > 0 && (
                      <select
                         value={selectedWeekendId ?? ''}
                         onChange={(e) => setSelectedWeekendId(Number(e.target.value))}
                      >
+                        <option value="-1">Resultado Geral</option>
                         {[...raceHistory].reverse().map(weekend => (
                             <option key={weekend.id} value={weekend.id}>
                                 {weekend.name}
@@ -1006,8 +1025,8 @@ const RaceResults: FC<{ raceHistory: RaceWeekend[] }> = ({ raceHistory }) => {
                         <tr>
                             <th>Pos</th>
                             <th>Nome da Equipe</th>
-                            <th>Pontos da Etapa</th>
-                            <th>Pontos no Campeonato</th>
+                            <th>{selectedWeekendId === -1 ? 'Total Pontos Etapas' : 'Pontos da Etapa'}</th>
+                            <th>{selectedWeekendId === -1 ? 'Total Pontos Campeonato' : 'Pontos no Campeonato'}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1015,8 +1034,8 @@ const RaceResults: FC<{ raceHistory: RaceWeekend[] }> = ({ raceHistory }) => {
                             <tr key={r.userName}>
                                 <td>{index + 1}</td>
                                 <td>{r.userName}</td>
-                                <td>{r.weekendPoints}</td>
-                                <td>{r.championshipPointsAwarded}</td>
+                                <td>{r.weekendPoints.toFixed(1).replace('.0', '')}</td>
+                                <td>{r.championshipPointsAwarded.toFixed(1).replace('.0', '')}</td>
                             </tr>
                         ))}
                     </tbody>
