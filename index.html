@@ -488,13 +488,63 @@
   "imports": {
     "react": "https://esm.sh/react@18.2.0",
     "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "react/": "https://esm.sh/react@18.2.0/",
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
     "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
-    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
   }
 }
+</script>
+<script>
+    // Failsafe error reporter to print any JS/runtime/Babel crashes directly on screen instead of a blank page
+    window.onerror = function(message, source, lineno, colno, error) {
+        var errDiv = document.getElementById('rendered-error-overlay');
+        if (!errDiv) {
+            errDiv = document.createElement('div');
+            errDiv.id = 'rendered-error-overlay';
+            errDiv.style.position = 'fixed';
+            errDiv.style.top = '0';
+            errDiv.style.left = '0';
+            errDiv.style.width = '100vw';
+            errDiv.style.height = '100vh';
+            errDiv.style.backgroundColor = 'rgba(26, 26, 26, 0.95)';
+            errDiv.style.color = '#ff4444';
+            errDiv.style.padding = '2rem';
+            errDiv.style.fontFamily = 'monospace';
+            errDiv.style.zIndex = '99999';
+            errDiv.style.overflow = 'auto';
+            document.body.appendChild(errDiv);
+        }
+        errDiv.innerHTML = '<h2 style="color: #e10600; margin-bottom: 1rem; text-transform: uppercase;">Erro de Inicialização (Failsafe)</h2>' +
+                        '<p style="font-size: 1.1rem; margin-bottom: 0.5rem;"><b>Mensagem:</b> ' + message + '</p>' +
+                        '<p style="color: #bbb; margin-bottom: 1rem;"><b>No arquivo:</b> ' + source + ' (Linha: ' + lineno + ', Coluna: ' + colno + ')</p>' +
+                        (error && error.stack ? '<pre style="background: #2c2c2c; padding: 1rem; border-radius: 6px; border: 1px solid #444; color: #eee; overflow-x: auto; white-space: pre-wrap;">' + error.stack + '</pre>' : '') +
+                        '<p style="margin-top: 1.5rem; color: #888;">Conselho: Certifique-se de que nenhum arquivo ou dependência falhou ao carregar na aba Network/Rede do navegador.</p>';
+        return false;
+    };
+    window.onunhandledrejection = function(event) {
+        var errDiv = document.getElementById('rendered-error-overlay');
+        if (!errDiv) {
+            errDiv = document.createElement('div');
+            errDiv.id = 'rendered-error-overlay';
+            errDiv.style.position = 'fixed';
+            errDiv.style.top = '0';
+            errDiv.style.left = '0';
+            errDiv.style.width = '100vw';
+            errDiv.style.height = '100vh';
+            errDiv.style.backgroundColor = 'rgba(26, 26, 26, 0.95)';
+            errDiv.style.color = '#ff9900';
+            errDiv.style.padding = '2rem';
+            errDiv.style.fontFamily = 'monospace';
+            errDiv.style.zIndex = '99999';
+            errDiv.style.overflow = 'auto';
+            document.body.appendChild(errDiv);
+        }
+        errDiv.innerHTML = '<h2 style="color: #ff9900; margin-bottom: 1rem; text-transform: uppercase;">Promessa Rejeitada (Erro de Rede/Firestore)</h2>' +
+                        '<p style="font-size: 1.1rem; margin-bottom: 0.5rem;"><b>Motivo:</b> ' + (event.reason ? (event.reason.message || event.reason) : 'Desconhecido') + '</p>' +
+                        (event.reason && event.reason.stack ? '<pre style="background: #2c2c2c; padding: 1rem; border-radius: 6px; border: 1px solid #444; color: #eee; overflow-x: auto; white-space: pre-wrap;">' + event.reason.stack + '</pre>' : '') +
+                        '<p style="margin-top: 1.5rem; color: #888;">Isso pode ocorrer devido a restrições de rede, regras de segurança do Firebase ou dados indisponíveis temporariamente.</p>';
+    };
 </script>
 <link rel="stylesheet" href="./index.css">
 </head>
