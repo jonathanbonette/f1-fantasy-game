@@ -496,7 +496,7 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
+<link rel="stylesheet" href="./index.css">
 </head>
 <body>
     <div id="root"></div>
@@ -506,6 +506,10 @@
         data-type="module" ensures imports work correctly.
     -->
     <script type="text/babel" data-presets="typescript,react" data-type="module" src="./index.tsx"></script>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module">
+        if (!window.location.hostname.endsWith('.github.io') && window.location.hostname !== 'jonathanbonette.github.io') {
+            import('./index.tsx');
+        }
+    </script>
 </body>
 </html>
