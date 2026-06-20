@@ -1,6 +1,8 @@
 
-import React, { useState, useMemo, FC, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
+
+type FC<P = {}> = React.FunctionComponent<P>;
 import { initializeApp } from "firebase/app";
 import { 
     getFirestore,
